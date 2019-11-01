@@ -173,6 +173,11 @@ EOF
     echo "> Habilitando HTTP/2 ..."
     echo "Protocols h2 h2c http/1.1" >> /etc/apache2/apache2.conf
 
+    echo "> Securizando apache ..."
+    sed -i 's/ServerSignature.*/ServerSignature Off/' /etc/apache2/conf-available/security.conf
+    sed -i 's/ServerTokens.*/ServerTokens Prod/' /etc/apache2/conf-available/security.conf
+    sed -i 's/#Header set X-Frame-Options.*/Header set X-Frame-Options: "sameorigin"/' /etc/apache2/conf-available/security.conf
+
     echo "> Reiniciando servicio Apache..."
     systemctl restart apache2
 
@@ -281,13 +286,15 @@ EOF
     ssh-keygen -t rsa
     cp ~/.ssh/id_rsa.pub  ~/.ssh/authorized_keys
 
-    echo "> Copie la clave privada ...
+    echo "> Copia la clave privada ...
     
     "
     cat ~/.ssh/id_rsa
 
     echo "
     
-    Instalación finalizada."
+    "
 
 ## END - Configuraciones
+
+echo "Instalación finalizada ;)"
