@@ -85,7 +85,7 @@ HOSTNAME=$(</etc/hostname)
     apt update
 
     echo "> Instalando webmin..."
-    apt install webmin
+    apt install webmin -y
 ## FIN - Instalacion de WEBMIN
 
 ## INI - Instalacion de UFW
@@ -102,10 +102,32 @@ HOSTNAME=$(</etc/hostname)
     ufw allow 80/tcp
     ufw allow 443/tcp
     ufw allow ${SSH_PORT}/tcp
-    ufw allow 10000/tcp
+    #ufw allow 10000/tcp
 
+    echo "> Creando perfil de aplicaciones ..."
+    cat > /etc/ufw/applications.d/appsrv << EOF
+[appsrv-ssh]
+title=Secure shell server, an rshd replacement
+description=OpenSSH is a free implementation of the Secure Shell protocol.
+ports=22,2022,2222,$SSH_PORT/tcp
+
+[appsrv-web]
+title=Web Server 
+description=Web server services (HTTP,HTTPS)
+ports=80,443,8080/tcp
+
+[appsrv-sql]
+title=MariaDB
+description=MariaDB database service
+ports=3306/tcp
+
+[appsrv-webmin]
+title=Webmin
+description=Webmin service
+ports=10000/tcp
+EOF
     ufw enable
-    ufw status
+    service ufw force-reload
 ## FIN - Instalacion de UFW
 
 ## INI - Instalacion de LAMP
@@ -207,19 +229,24 @@ EOF
     echo "> Instalando fail2ban ..."
     apt install fail2ban -y
 
-
-
     cat > /etc/fail2ban/jail.local << EOF
+[sshd]
+enabled = false
+
 [ssh-with-ufw]
 enabled = true
 port = $SSH_PORT
 filter = sshd
-action = ufw[application="OpenSSH", blocktype=reject]
+action = ufw[application="appsrv-ssh", blocktype=reject]
 logpath = /var/log/auth.log
 maxretry = 3
+ignoreip = 127.0.0.1/8
+findtime = 600
+bantime = 3600
+
 EOF
 
-    service fail2ban restart
+    service fail2ban reload
 ## FIN - Instalacion de fail2ban
 
 ## INI - Instalacion de sudo
@@ -244,20 +271,23 @@ EOF
 ## INI - Configuraciones
     echo "• Configuracion del sistema."
 
-    echo "> Modificando shell de www-data ..."
+    echo "> Modificando shell de www-data y sus permisos sobre /var/www ..."
     usermod --shell /bin/bash www-data
+    chown -R www-data:www-data /var/www
+    find /var/www -type d -exec chmod 0755 {} \;
+    find /var/www -type f -exec chmod 644 {} \;
 
-    echo "> Configurando acceso SSH mediante keys ..."
+    echo "> Configurando acceso SSH mediante pair key ..."
     ssh-keygen -t rsa
     cp ~/.ssh/id_rsa.pub  ~/.ssh/authorized_keys
 
-    echo "> Copia la clave privada ...
+    echo "> Copie la clave privada ...
     
     "
     cat ~/.ssh/id_rsa
 
     echo "
     
-    "
-    read -p "Presiona [Enter] para continuar..."
+    Instalación finalizada."
+
 ## END - Configuraciones
